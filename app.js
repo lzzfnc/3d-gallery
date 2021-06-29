@@ -6,7 +6,7 @@ import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/l
 import { Octree } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/math/Octree.js';
 import { Capsule } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/math/Capsule.js';
         
-
+let mixer
 const clock = new THREE.Clock();
 
 const scene = new THREE.Scene();
@@ -16,13 +16,13 @@ const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.inner
 camera.rotation.order = 'YXZ';
 
 const ambientlight = new THREE.AmbientLight( 0x6688cc );
-scene.add( ambientlight );
+scene.add(ambientlight);
 
-const fillLight1 = new THREE.DirectionalLight( 0xff9999, 0.5 );
+const fillLight1 = new THREE.DirectionalLight( 0xffffee, 0.5 );
 fillLight1.position.set( - 1, 1, 2 );
 scene.add( fillLight1 );
 
-const fillLight2 = new THREE.DirectionalLight( 0x8888ff, 0.2 );
+const fillLight2 = new THREE.DirectionalLight( 0xffffee, 0.2 );
 fillLight2.position.set( 0, - 1, 0 );
 scene.add( fillLight2 );
 
@@ -59,30 +59,9 @@ container.appendChild( stats.domElement );
 
 const GRAVITY = 30;
 
-const NUM_SPHERES = 20;
-const SPHERE_RADIUS = 0.2;
-
-const sphereGeometry = new THREE.SphereGeometry( SPHERE_RADIUS, 32, 32 );
-const sphereMaterial = new THREE.MeshStandardMaterial( { color: 0x888855, roughness: 0.8, metalness: 0.5 } );
-
-const spheres = [];
-let sphereIdx = 0;
-
-for ( let i = 0; i < NUM_SPHERES; i ++ ) {
-
-    const sphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
-    sphere.castShadow = true;
-    sphere.receiveShadow = true;
-
-    scene.add( sphere );
-
-    spheres.push( { mesh: sphere, collider: new THREE.Sphere( new THREE.Vector3( 0, - 100, 0 ), SPHERE_RADIUS ), velocity: new THREE.Vector3() } );
-
-}
-
 const worldOctree = new Octree();
 
-const playerCollider = new Capsule( new THREE.Vector3( 0, 0.35, 0 ), new THREE.Vector3( 0, 1, 0 ), 0.35 );
+const playerCollider = new Capsule( new THREE.Vector3( 0, 0.35, 0 ), new THREE.Vector3( 0, 1.5, 0 ), 0.35 );
 
 const playerVelocity = new THREE.Vector3();
 const playerDirection = new THREE.Vector3();
@@ -131,19 +110,6 @@ function onWindowResize() {
 
 }
 
-document.addEventListener( 'click', () => {
-
-    const sphere = spheres[ sphereIdx ];
-
-    camera.getWorldDirection( playerDirection );
-
-    sphere.collider.center.copy( playerCollider.end );
-    sphere.velocity.copy( playerDirection ).multiplyScalar( 30 );
-
-    sphereIdx = ( sphereIdx + 1 ) % spheres.length;
-
-} );
-
 function playerCollitions() {
 
     const result = worldOctree.capsuleIntersect( playerCollider );
@@ -188,70 +154,6 @@ function updatePlayer( deltaTime ) {
 
 }
 
-function spheresCollisions() {
-
-    for ( let i = 0; i < spheres.length; i ++ ) {
-
-        const s1 = spheres[ i ];
-
-        for ( let j = i + 1; j < spheres.length; j ++ ) {
-
-            const s2 = spheres[ j ];
-
-            const d2 = s1.collider.center.distanceToSquared( s2.collider.center );
-            const r = s1.collider.radius + s2.collider.radius;
-            const r2 = r * r;
-
-            if ( d2 < r2 ) {
-
-                const normal = s1.collider.clone().center.sub( s2.collider.center ).normalize();
-                const v1 = normal.clone().multiplyScalar( normal.dot( s1.velocity ) );
-                const v2 = normal.clone().multiplyScalar( normal.dot( s2.velocity ) );
-                s1.velocity.add( v2 ).sub( v1 );
-                s2.velocity.add( v1 ).sub( v2 );
-
-                const d = ( r - Math.sqrt( d2 ) ) / 2;
-
-                s1.collider.center.addScaledVector( normal, d );
-                s2.collider.center.addScaledVector( normal, - d );
-
-            }
-
-        }
-
-    }
-
-}
-
-function updateSpheres( deltaTime ) {
-
-    spheres.forEach( sphere =>{
-
-        sphere.collider.center.addScaledVector( sphere.velocity, deltaTime );
-
-        const result = worldOctree.sphereIntersect( sphere.collider );
-
-        if ( result ) {
-
-            sphere.velocity.addScaledVector( result.normal, - result.normal.dot( sphere.velocity ) * 1.5 );
-            sphere.collider.center.add( result.normal.multiplyScalar( result.depth ) );
-
-        } else {
-
-            sphere.velocity.y -= GRAVITY * deltaTime;
-
-        }
-
-        const damping = Math.exp( - 1.5 * deltaTime ) - 1;
-        sphere.velocity.addScaledVector( sphere.velocity, damping );
-
-        spheresCollisions();
-
-        sphere.mesh.position.copy( sphere.collider.center );
-
-    } );
-
-}
 
 function getForwardVector() {
 
@@ -306,7 +208,7 @@ function controls( deltaTime ) {
 
         if ( keyStates[ 'Space' ] ) {
 
-            playerVelocity.y = 15;
+            playerVelocity.y = 5;
 
         }
 
@@ -318,11 +220,13 @@ const loader = new GLTFLoader().setPath( './assets/' );
 
 loader.load( 'model.glb', ( gltf ) => {
 
-    scene.add( gltf.scene );
+    const model = gltf.scene
 
+    scene.add(model);
+    
     worldOctree.fromGraphNode( gltf.scene );
 
-    gltf.scene.traverse( child => {
+    model.traverse( child => {
 
         if ( child.isMesh ) {
 
@@ -337,7 +241,12 @@ loader.load( 'model.glb', ( gltf ) => {
 
         }
 
-    } );
+    });
+
+    mixer = new THREE.AnimationMixer(model);
+    mixer.clipAction( gltf.animations[0] ).play();
+    
+
 
     animate();
 
@@ -347,12 +256,14 @@ function animate() {
 
     const deltaTime = Math.min( 0.1, clock.getDelta() );
 
+
+    mixer.update( deltaTime );
+
     controls( deltaTime );
 
     updatePlayer( deltaTime );
 
-    updateSpheres( deltaTime );
-
+   
     renderer.render( scene, camera );
 
     stats.update();
