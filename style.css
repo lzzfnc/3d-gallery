@@ -1,4 +1,31 @@
 html,
 body {
     margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+nav {
+    position: absolute;
+    bottom: 64px;
+    left: 64px;
+    font-size: 24px;
+    background-color: rgba(255,255,255,0.5);
+    border-radius: 1em;
+    padding-left: 0.5em;
+}
+
+nav span {
+    display: inline-block;
+    min-width: 1em;
+    height: 1em;
+    margin: 0 0.1em;
+    border-radius: 1em;
+    background: white;
+    text-align: center;
+    line-height: 1em;
+    padding: 0.3em;
+}
+
+nav span:last-of-type {
+    margin-right: 0;
 }

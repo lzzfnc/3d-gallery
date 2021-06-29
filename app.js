@@ -53,7 +53,8 @@ container.appendChild( renderer.domElement );
 
 const stats = new Stats();
 stats.domElement.style.position = 'absolute';
-stats.domElement.style.top = '0px';
+stats.domElement.style.top = '64px';
+stats.domElement.style.left = '64px';
 
 container.appendChild( stats.domElement );
 
