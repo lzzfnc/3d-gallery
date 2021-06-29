@@ -3,6 +3,9 @@ import * as THREE from 'https://cdn.skypack.dev/three@0.129.0';
 import Stats from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/libs/stats.module.js';
 
 import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/DRACOLoader.js';
+
+
 import { Octree } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/math/Octree.js';
 import { Capsule } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/math/Capsule.js';
         
@@ -217,9 +220,14 @@ function controls( deltaTime ) {
 
 }
 
-const loader = new GLTFLoader().setPath( './assets/' );
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.1/');
 
-loader.load( 'model.glb', ( gltf ) => {
+const loader = new GLTFLoader().setPath( './assets/' );
+loader.setDRACOLoader( dracoLoader );
+
+
+loader.load( 'modelDraco.glb', ( gltf ) => {
 
     const model = gltf.scene
 
