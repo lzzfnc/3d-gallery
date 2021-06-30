@@ -20,7 +20,7 @@ camera.rotation.order = "YXZ";
 const ambientlight = new THREE.AmbientLight(0xb3c3e6);
 scene.add(ambientlight);
 
-const fillLight1 = new THREE.DirectionalLight(0xffffee, 0.5);
+const fillLight1 = new THREE.DirectionalLight(0xffffee, 0.2);
 fillLight1.position.set(-1, 2, 2);
 scene.add(fillLight1);
 
@@ -28,8 +28,8 @@ const fillLight2 = new THREE.DirectionalLight(0xffffee, 0.2);
 fillLight2.position.set(0, 3, 0);
 scene.add(fillLight2);
 
-const directionalLight = new THREE.DirectionalLight(0xffffaa, 0.2);
-directionalLight.position.set(-5, 2, -1);
+const directionalLight = new THREE.DirectionalLight(0xffffaa, 0.5);
+directionalLight.position.set(0, 5, 5);
 directionalLight.castShadow = true;
 directionalLight.shadow.camera.near = 0.01;
 directionalLight.shadow.camera.far = 500;
