@@ -7,6 +7,11 @@ import { DRACOLoader } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/
 
 import { Octree } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/math/Octree.js";
 import { Capsule } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/math/Capsule.js";
+import { DeviceOrientationControls } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/DeviceOrientationControls.js";
+
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+	navigator.userAgent
+);
 
 let mixer;
 const clock = new THREE.Clock();
@@ -16,6 +21,14 @@ scene.background = new THREE.Color(0x88ccff);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = "YXZ";
+
+let controls;
+
+if (isMobile) {
+	controls = new DeviceOrientationControls(camera);
+}
+
+// LIGHTS
 
 const ambientlight = new THREE.AmbientLight(0xb3c3e6);
 scene.add(ambientlight);
@@ -43,6 +56,8 @@ directionalLight.shadow.radius = 4;
 directionalLight.shadow.bias = -0.00006;
 scene.add(directionalLight);
 
+// RENDERER
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -54,9 +69,7 @@ const container = document.getElementById("container");
 container.appendChild(renderer.domElement);
 
 const stats = new Stats();
-stats.domElement.style.position = "absolute";
-stats.domElement.style.top = "64px";
-stats.domElement.style.left = "64px";
+stats.domElement.classList.add("stats");
 
 container.appendChild(stats.domElement);
 
@@ -75,6 +88,28 @@ const playerDirection = new THREE.Vector3();
 
 let playerOnFloor = false;
 
+// mobile controls
+
+const buttonStates = {};
+
+document.getElementById("forward").addEventListener("touchstart", (event) => {
+	buttonStates.forward = true;
+});
+
+document.getElementById("forward").addEventListener("touchend", (event) => {
+	buttonStates.forward = false;
+});
+
+document.getElementById("back").addEventListener("touchstart", (event) => {
+	buttonStates["back"] = true;
+});
+
+document.getElementById("back").addEventListener("touchend", (event) => {
+	buttonStates["back"] = false;
+});
+
+// keyboard controls
+
 const keyStates = {};
 
 document.addEventListener("keydown", (event) => {
@@ -85,17 +120,18 @@ document.addEventListener("keyup", (event) => {
 	keyStates[event.code] = false;
 });
 
-document.addEventListener("mousedown", () => {
-	document.body.requestPointerLock();
-});
+if (!isMobile) {
+	document.addEventListener("mousedown", () => {
+		document.body.requestPointerLock();
+	});
 
-document.body.addEventListener("mousemove", (event) => {
-	if (document.pointerLockElement === document.body) {
-		camera.rotation.y -= event.movementX / 500;
-		camera.rotation.x -= event.movementY / 500;
-	}
-});
-
+	document.body.addEventListener("mousemove", (event) => {
+		if (document.pointerLockElement === document.body) {
+			camera.rotation.y -= event.movementX / 500;
+			camera.rotation.x -= event.movementY / 500;
+		}
+	});
+}
 window.addEventListener("resize", onWindowResize);
 
 function onWindowResize() {
@@ -154,7 +190,7 @@ function getSideVector() {
 	return playerDirection;
 }
 
-function controls(deltaTime) {
+function keyControls(deltaTime) {
 	const speed = 25;
 
 	if (playerOnFloor) {
@@ -176,6 +212,20 @@ function controls(deltaTime) {
 
 		if (keyStates["Space"]) {
 			playerVelocity.y = 5;
+		}
+	}
+}
+
+function mobileControls(deltaTime) {
+	const speed = 5;
+
+	if (playerOnFloor) {
+		if (buttonStates["forward"]) {
+			playerVelocity.add(getForwardVector().multiplyScalar(speed * deltaTime));
+		}
+
+		if (buttonStates["back"]) {
+			playerVelocity.add(getForwardVector().multiplyScalar(-speed * deltaTime));
 		}
 	}
 }
@@ -217,7 +267,10 @@ function animate() {
 
 	mixer.update(deltaTime);
 
-	controls(deltaTime);
+	if (isMobile) {
+		controls.update();
+		mobileControls(deltaTime);
+	} else keyControls(deltaTime);
 
 	updatePlayer(deltaTime);
 
