@@ -61,6 +61,7 @@ nav span:last-of-type {
 	}
 
 	.controls--mobile button {
+		font-family: monospace;
 		font-size: 48px;
 		width: 96px;
 		height: 96px;
@@ -69,7 +70,7 @@ nav span:last-of-type {
 		border-radius: 50%;
 		display: block;
 		text-align: center;
-		border: 1px solid white;
+		border: none;
 		background-color: rgba(255, 255, 255, 0.25);
 	}
 
