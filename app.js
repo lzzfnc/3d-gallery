@@ -310,7 +310,6 @@ loader.load("modelCompress2.glb", (gltf) => {
 			}
 		}
 	});
-
 	intSceneisLoaded = true;
 });
 
@@ -324,8 +323,14 @@ function animate() {
 		mobileControls(deltaTime);
 	} else keyControls(deltaTime);
 
-	if (door.distanceToPoint(camera.position) < 1.5) {
+	let doorDistance = door.distanceToPoint(camera.position);
+
+	if (doorDistance < 1.5) {
 		testDoor();
+	}
+
+	if (isDoorActive == false && doorDistance > 2) {
+		isDoorActive = true;
 	}
 
 	updatePlayer(deltaTime);
@@ -338,6 +343,7 @@ function animate() {
 }
 
 let door = null;
+let isDoorActive = true;
 let isInside = false;
 let intDoor = new THREE.Box3();
 let extDoor = new THREE.Box3();
@@ -345,12 +351,21 @@ let intDoorMesh = null;
 let extDoorMesh = null;
 
 function testDoor() {
-	if (intSceneisLoaded) {
+	if (intSceneisLoaded && isDoorActive) {
+		playerVelocity.y = 5;
 		scene = isInside ? extScene : intScene;
 		door = isInside ? extDoor : intDoor;
 		worldOctree = isInside ? extWorldOctree : intWorldOctree;
+
+		playerCollider.translate(
+			isInside
+				? new THREE.Vector3(0, 0, 0).copy(intDoorMesh.position).negate()
+				: new THREE.Vector3(0, 0, 0).copy(extDoorMesh.position).negate()
+		);
 		playerCollider.translate(isInside ? extDoorMesh.position : intDoorMesh.position);
+		camera.position.copy(playerCollider.end);
 
 		isInside = !isInside;
+		isDoorActive = false;
 	}
 }
