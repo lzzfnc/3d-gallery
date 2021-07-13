@@ -14,15 +14,20 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 );
 
 let mixer;
+let controls;
 const clock = new THREE.Clock();
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x88ccff);
+const extScene = new THREE.Scene();
+const intScene = new THREE.Scene();
+let scene = extScene;
+
+let intSceneisLoaded = false;
+
+extScene.background = new THREE.Color(0x88ccff);
+intScene.background = new THREE.Color(0xffcc88);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.rotation.order = "YXZ";
-
-let controls;
 
 if (isMobile) {
 	controls = new DeviceOrientationControls(camera);
@@ -31,15 +36,21 @@ if (isMobile) {
 // LIGHTS
 
 const ambientlight = new THREE.AmbientLight(0xb3c3e6);
-scene.add(ambientlight);
+
+extScene.add(ambientlight);
+intScene.add(ambientlight.clone());
 
 const fillLight1 = new THREE.DirectionalLight(0xffffee, 0.2);
 fillLight1.position.set(-1, 2, 2);
-scene.add(fillLight1);
+
+extScene.add(fillLight1);
+intScene.add(fillLight1.clone());
 
 const fillLight2 = new THREE.DirectionalLight(0xffffee, 0.2);
 fillLight2.position.set(0, 3, 0);
-scene.add(fillLight2);
+
+extScene.add(fillLight2);
+intScene.add(fillLight2.clone());
 
 const directionalLight = new THREE.DirectionalLight(0xffffaa, 0.5);
 directionalLight.position.set(0, 5, 5);
@@ -54,7 +65,9 @@ directionalLight.shadow.mapSize.width = 1024;
 directionalLight.shadow.mapSize.height = 1024;
 directionalLight.shadow.radius = 4;
 directionalLight.shadow.bias = -0.00006;
-scene.add(directionalLight);
+
+extScene.add(directionalLight);
+intScene.add(directionalLight.clone());
 
 // RENDERER
 
@@ -75,7 +88,9 @@ container.appendChild(stats.domElement);
 
 const GRAVITY = 30;
 
-const worldOctree = new Octree();
+let worldOctree = null;
+let intWorldOctree = new Octree();
+let extWorldOctree = new Octree();
 
 const playerCollider = new Capsule(
 	new THREE.Vector3(0, 0.35, 0),
@@ -142,7 +157,7 @@ function onWindowResize() {
 }
 
 function playerCollitions() {
-	const result = worldOctree.capsuleIntersect(playerCollider);
+	let result = worldOctree.capsuleIntersect(playerCollider);
 
 	playerOnFloor = false;
 
@@ -169,7 +184,6 @@ function updatePlayer(deltaTime) {
 	playerCollider.translate(deltaPosition);
 
 	playerCollitions();
-
 	camera.position.copy(playerCollider.end);
 }
 
@@ -211,7 +225,7 @@ function keyControls(deltaTime) {
 		}
 
 		if (keyStates["Space"]) {
-			playerVelocity.y = 5;
+			playerVelocity.y = 10;
 		}
 	}
 }
@@ -236,12 +250,14 @@ dracoLoader.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.4
 const loader = new GLTFLoader().setPath("./assets/");
 loader.setDRACOLoader(dracoLoader);
 
+// SCENE 1
+
 loader.load("modelCompress.glb", (gltf) => {
 	const model = gltf.scene;
+	extScene.add(model);
 
-	scene.add(model);
-
-	worldOctree.fromGraphNode(gltf.scene);
+	extWorldOctree.fromGraphNode(model);
+	worldOctree = extWorldOctree;
 
 	model.traverse((child) => {
 		if (child.isMesh) {
@@ -250,6 +266,13 @@ loader.load("modelCompress.glb", (gltf) => {
 
 			if (child.material.map) {
 				child.material.map.anisotropy = 8;
+			}
+
+			if (child.name === "Door") {
+				child.geometry.computeBoundingBox();
+				extDoor.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld);
+				extDoorMesh = child;
+				door = extDoor;
 			}
 		}
 	});
@@ -262,6 +285,35 @@ loader.load("modelCompress.glb", (gltf) => {
 	animate();
 });
 
+// SCENE 2
+
+loader.load("modelCompress2.glb", (gltf) => {
+	const model = gltf.scene;
+
+	intScene.add(model);
+
+	intWorldOctree.fromGraphNode(model);
+
+	model.traverse((child) => {
+		if (child.isMesh) {
+			child.castShadow = true;
+			child.receiveShadow = true;
+
+			if (child.material.map) {
+				child.material.map.anisotropy = 8;
+			}
+
+			if (child.name === "Door") {
+				child.geometry.computeBoundingBox();
+				intDoor.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld);
+				intDoorMesh = child;
+			}
+		}
+	});
+
+	intSceneisLoaded = true;
+});
+
 function animate() {
 	const deltaTime = Math.min(0.1, clock.getDelta());
 
@@ -272,6 +324,10 @@ function animate() {
 		mobileControls(deltaTime);
 	} else keyControls(deltaTime);
 
+	if (door.distanceToPoint(camera.position) < 1.5) {
+		testDoor();
+	}
+
 	updatePlayer(deltaTime);
 
 	renderer.render(scene, camera);
@@ -279,4 +335,22 @@ function animate() {
 	stats.update();
 
 	requestAnimationFrame(animate);
+}
+
+let door = null;
+let isInside = false;
+let intDoor = new THREE.Box3();
+let extDoor = new THREE.Box3();
+let intDoorMesh = null;
+let extDoorMesh = null;
+
+function testDoor() {
+	if (intSceneisLoaded) {
+		scene = isInside ? extScene : intScene;
+		door = isInside ? extDoor : intDoor;
+		worldOctree = isInside ? extWorldOctree : intWorldOctree;
+		playerCollider.translate(isInside ? extDoorMesh.position : intDoorMesh.position);
+
+		isInside = !isInside;
+	}
 }
